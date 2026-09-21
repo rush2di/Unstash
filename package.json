@@ -54,7 +54,8 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tests.json",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "ios:device": "bash scripts/install-device.sh"
   },
   "private": true
 }

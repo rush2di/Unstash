@@ -43,6 +43,29 @@ On iOS you also need to set a Development Team on both the app target and the
 Everything except the share sheet runs in Expo Go. The save screen accepts a pasted link, so
 the whole save → remind → revisit loop is reachable without a native build.
 
+## Installing on an iPhone
+
+The app is signed with a **free personal Apple team**, so:
+
+- An install lasts **7 days**. Run `pnpm ios:device` again to renew it.
+- The first install needs trust on the phone: **Settings → General → VPN & Device
+  Management → your Apple ID → Trust**.
+- The bundle ID is `com.remindme.app.saves`; `com.remindme.app` belongs to another developer.
+
+```bash
+pnpm ios:device            # builds Release and installs on the connected iPhone
+```
+
+Free teams cannot sign App Groups or Push Notifications, so two local changes keep the full
+feature set working:
+
+- `expo-share-intent` is patched (`iosAppGroup: false` in `app.json`): the share extension
+  passes the link inside the deep link (`remindme://save?url=…`) instead of through an App Group.
+- `plugins/without-push-entitlement.js` drops `aps-environment`. Reminders are local
+  notifications, which do not need it.
+
+On a paid team, remove both and set `appleTeamId` to that team.
+
 ## Preview service
 
 Previews are resolved by an **Expo Router API route**, so the mobile app never fetches

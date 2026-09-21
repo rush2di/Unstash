@@ -18,7 +18,10 @@ import { AppText } from "@/components/text";
 import { findSavedItemByUrl } from "@/db/repositories";
 import { scheduleReminder } from "@/features/reminders/scheduler";
 import { useLivePreview } from "@/features/saved-items/use-live-preview";
-import { parseInstagramUrl } from "@/services/instagram/parse-url";
+import {
+  extractInstagramUrl,
+  parseInstagramUrl,
+} from "@/services/instagram/parse-url";
 import { getDatabase, useLibraryStore } from "@/stores/library";
 import type { SavedItem } from "@/types/domain";
 import { displayCaption } from "@/features/tags/hashtags";
@@ -43,7 +46,10 @@ export default function SaveScreen() {
     (state) => state.settings.notificationSound,
   );
 
-  const [rawUrl, setRawUrl] = useState(params.url ?? "");
+  // A share can arrive as caption text with the link inside, so pull the link out first.
+  const [rawUrl, setRawUrl] = useState(
+    () => extractInstagramUrl(params.url ?? "") ?? params.url ?? "",
+  );
   const [collectionId, setCollectionId] = useState<string | null>(null);
   const [reminderAt, setReminderAt] = useState<Date | null>(null);
   const [newCollectionName, setNewCollectionName] = useState("");

@@ -9,16 +9,17 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.remindme.app",
+      "bundleIdentifier": "com.remindme.app.saves",
       "supportsTablet": true,
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
           "instagram"
         ]
-      }
+      },
+      "appleTeamId": "D8H38Z425L"
     },
     "android": {
-      "package": "com.remindme.app",
+      "package": "com.remindme.app.saves",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -42,6 +43,7 @@
           "imageWidth": 76
         }
       ],
+      "./plugins/without-push-entitlement",
       [
         "expo-notifications",
         {
@@ -59,13 +61,33 @@
           "iosShareExtensionName": "RemindMe Share",
           "androidIntentFilters": [
             "text/*"
-          ]
+          ],
+          "iosAppGroup": false
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "RemindMeShare",
+                  "bundleIdentifier": "com.remindme.app.saves.share-extension"
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "2524bb2e-4c11-45a9-8210-26de63d82867"
+      }
+    },
+    "owner": "rochdi25"
   }
 }

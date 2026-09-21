@@ -1,0 +1,143 @@
+diff --git a/plugin/build/ios/ShareExtensionViewController.swift b/plugin/build/ios/ShareExtensionViewController.swift
+index f1f4b726dfe3a7bd9e341e74c6d09b22becddf2f..848eb5c89d8c3c393528aef40d72a0b0718552a1 100644
+--- a/plugin/build/ios/ShareExtensionViewController.swift
++++ b/plugin/build/ios/ShareExtensionViewController.swift
+@@ -14,6 +14,9 @@ class ShareViewController: UIViewController {
+   let shareProtocol: String = "<SCHEME>"
+   let sharedKey: String = "<SCHEME>ShareKey"
+   let hideView: Bool = <HIDEVIEW>
++  /// Local patch: true when the build has no App Group (free Apple teams). The shared
++  /// container is then unavailable, so a link is passed inline as <scheme>://save?url=...
++  let inlineHandoff: Bool = <INLINEHANDOFF>
+   var sharedMedia: [SharedMediaFile] = []
+   var sharedWebUrl: [WebUrl] = []
+   var sharedText: [String] = []
+@@ -116,6 +119,10 @@ class ShareViewController: UIViewController {
+           self.sharedText.append(item)
+           // If this is the last item, save sharedText in userDefaults and redirect to host app
+           if index == (content.attachments?.count)! - 1 {
++            if self.inlineHandoff {
++              self.redirectInline(self.sharedText.joined(separator: " "))
++              return
++            }
+             let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
+             userDefaults?.set(self.sharedText, forKey: self.sharedKey)
+             userDefaults?.synchronize()
+@@ -139,6 +146,10 @@ class ShareViewController: UIViewController {
+           self.sharedWebUrl.append(WebUrl(url: item.absoluteString, meta: ""))
+           // If this is the last item, save sharedText in userDefaults and redirect to host app
+           if index == (content.attachments?.count)! - 1 {
++            if self.inlineHandoff {
++              self.redirectInline(self.sharedWebUrl.map { $0.url }.joined(separator: " "))
++              return
++            }
+             let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
+             userDefaults?.set(self.toData(data: self.sharedWebUrl), forKey: self.sharedKey)
+             userDefaults?.synchronize()
+@@ -174,6 +185,10 @@ class ShareViewController: UIViewController {
+               WebUrl(url: results["baseURI"] as! String, meta: results["meta"] as! String))
+             // If this is the last item, save sharedText in userDefaults and redirect to host app
+             if index == (content.attachments?.count)! - 1 {
++              if self.inlineHandoff {
++                self.redirectInline(self.sharedWebUrl.map { $0.url }.joined(separator: " "))
++                return
++              }
+               let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
+               userDefaults?.set(self.toData(data: self.sharedWebUrl), forKey: self.sharedKey)
+               userDefaults?.synchronize()
+@@ -492,6 +507,23 @@ class ShareViewController: UIViewController {
+   private func redirectToHostApp(type: RedirectType) {
+     let nonce = UUID().uuidString
+     let url = URL(string: "\(shareProtocol)://dataUrl=\(sharedKey)?nonce=\(nonce)#\(type)")!
++    openHostApp(url)
++  }
++
++  /// Local patch: opens <scheme>://save?url=<text>, carrying the shared link itself.
++  private func redirectInline(_ text: String) {
++    var components = URLComponents()
++    components.scheme = shareProtocol
++    components.host = "save"
++    components.queryItems = [URLQueryItem(name: "url", value: text)]
++    guard let url = components.url else {
++      dismissWithError(message: "Cannot build a link for the shared content")
++      return
++    }
++    openHostApp(url)
++  }
++
++  private func openHostApp(_ url: URL) {
+     var responder = self as UIResponder?
+ 
+     while responder != nil {
+diff --git a/plugin/build/ios/withIosAppEntitlements.js b/plugin/build/ios/withIosAppEntitlements.js
+index 0633a61c9b3c8d4ad08d2bc4f8d555103e4c448c..22a9a81a0ed02bd0f978812ff079f86d850d859d 100644
+--- a/plugin/build/ios/withIosAppEntitlements.js
++++ b/plugin/build/ios/withIosAppEntitlements.js
+@@ -5,6 +5,10 @@ const config_plugins_1 = require("@expo/config-plugins");
+ const constants_1 = require("./constants");
+ const withAppEntitlements = (config, parameters) => {
+     return (0, config_plugins_1.withEntitlementsPlist)(config, async (config) => {
++        // Local patch: `iosAppGroup: false` for free Apple teams, which cannot sign App Groups.
++        if (parameters.iosAppGroup === false) {
++            return config;
++        }
+         const appIdentifier = config.ios?.bundleIdentifier;
+         const existing = config.modResults["com.apple.security.application-groups"];
+         config.modResults["com.apple.security.application-groups"] = [
+diff --git a/plugin/build/ios/withIosShareExtensionConfig.js b/plugin/build/ios/withIosShareExtensionConfig.js
+index 24796e69c699047d523dd76d845753e555e29012..9308b0c7dde13033ed4172b5bf0995c234d1cf3f 100644
+--- a/plugin/build/ios/withIosShareExtensionConfig.js
++++ b/plugin/build/ios/withIosShareExtensionConfig.js
+@@ -41,10 +41,13 @@ const withShareExtensionConfig = (config, parameters) => {
+                 config.extra.eas.build.experimental.ios.appExtensions.length - 1;
+         }
+         const extConfig = config.extra.eas.build.experimental.ios.appExtensions[extConfigIndex];
+-        extConfig.entitlements = {
+-            ...extConfig.entitlements,
+-            ...(0, writeIosShareExtensionFiles_1.getShareExtensionEntitlements)(appIdentifier, parameters),
+-        };
++        // Local patch: no App Group for free Apple teams (`iosAppGroup: false`).
++        if (parameters.iosAppGroup !== false) {
++            extConfig.entitlements = {
++                ...extConfig.entitlements,
++                ...(0, writeIosShareExtensionFiles_1.getShareExtensionEntitlements)(appIdentifier, parameters),
++            };
++        }
+     }
+     else {
+         console.warn(`[expo-share-intent] experimental config disabled`);
+diff --git a/plugin/build/ios/writeIosShareExtensionFiles.js b/plugin/build/ios/writeIosShareExtensionFiles.js
+index 9ceec1c5c0a65a8aae55bcd658a8c3bf4deab982..a9c6972c8de34d760c74565d6c8035197bdd4bd9 100644
+--- a/plugin/build/ios/writeIosShareExtensionFiles.js
++++ b/plugin/build/ios/writeIosShareExtensionFiles.js
+@@ -41,7 +41,7 @@ async function writeShareExtensionFiles(platformProjectRoot, scheme, appIdentifi
+     await node_fs_1.default.promises.writeFile(storyboardFilePath, storyboardContent);
+     // ShareViewController.swift
+     const viewControllerFilePath = getShareExtensionViewControllerPath(platformProjectRoot, parameters);
+-    const viewControllerContent = getShareExtensionViewControllerContent(scheme, (0, constants_1.getAppGroup)(appIdentifier, parameters), parameters.iosHideView);
++    const viewControllerContent = getShareExtensionViewControllerContent(scheme, (0, constants_1.getAppGroup)(appIdentifier, parameters), parameters.iosHideView).replaceAll("<INLINEHANDOFF>", parameters.iosAppGroup === false ? "true" : "false");
+     await node_fs_1.default.promises.writeFile(viewControllerFilePath, viewControllerContent);
+     // ShareExtensionPreprocessor.js
+     const preprocessorFilePath = getPreprocessorFilePath(platformProjectRoot, parameters);
+@@ -53,6 +53,10 @@ function getShareExtensionEntitlementsFilePath(platformProjectRoot, parameters)
+     return node_path_1.default.join(platformProjectRoot, (0, constants_1.getShareExtensionName)(parameters), constants_1.shareExtensionEntitlementsFileName);
+ }
+ function getShareExtensionEntitlements(appIdentifier, parameters) {
++    // Local patch: no App Group for free Apple teams (`iosAppGroup: false`).
++    if (parameters.iosAppGroup === false) {
++        return {};
++    }
+     return {
+         "com.apple.security.application-groups": [
+             (0, constants_1.getAppGroup)(appIdentifier, parameters),
+diff --git a/plugin/build/types.d.ts b/plugin/build/types.d.ts
+index 2686833ac9bb2572b7eebd909398068f52dc1b2b..07e727f7d749810db19b7d1bfd547d1689c6e383 100644
+--- a/plugin/build/types.d.ts
++++ b/plugin/build/types.d.ts
+@@ -16,4 +16,6 @@ export type Parameters = {
+     preprocessorInjectJS?: string;
+     disableAndroid?: boolean;
+     disableIOS?: boolean;
++    /** Local patch: false for free Apple teams. Drops the App Group and hands links over inline. */
++    iosAppGroup?: boolean;
+ };
