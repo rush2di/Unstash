@@ -1,6 +1,64 @@
 @import 'tailwindcss';
 @import 'uniwind';
 
+/*
+ * Design tokens.
+ *
+ * iOS grouped-list look: a light grey canvas with white grouped cards, so the saved previews
+ * supply the colour. One accent carries every interactive element.
+ *
+ * Every theme must define the same variable set, otherwise Uniwind throws at runtime.
+ */
+@layer theme {
+  :root {
+    @variant light {
+      --color-canvas: #f2f2f7;
+      --color-surface: #ffffff;
+      --color-surface-raised: #f7f7fa;
+      --color-surface-sunken: #e9e9ee;
+      --color-border: #e3e3e8;
+      --color-border-strong: #d1d1d6;
+
+      --color-ink: #111114;
+      --color-ink-soft: #6c6c72;
+      --color-ink-faint: #a1a1a8;
+
+      --color-accent: #2f7cf6;
+      --color-accent-soft: #e7f0fe;
+      --color-on-accent: #ffffff;
+
+      --color-danger: #e5484d;
+      --color-success: #34c759;
+      --color-warning: #f0932b;
+
+      --color-scrim: rgba(17, 17, 20, 0.45);
+    }
+
+    @variant dark {
+      --color-canvas: #000000;
+      --color-surface: #1c1c1e;
+      --color-surface-raised: #2c2c2e;
+      --color-surface-sunken: #111113;
+      --color-border: #2c2c2e;
+      --color-border-strong: #3a3a3c;
+
+      --color-ink: #f5f5f7;
+      --color-ink-soft: #a1a1a8;
+      --color-ink-faint: #6c6c72;
+
+      --color-accent: #0a84ff;
+      --color-accent-soft: #0b2545;
+      --color-on-accent: #ffffff;
+
+      --color-danger: #ff6961;
+      --color-success: #30d158;
+      --color-warning: #ff9f0a;
+
+      --color-scrim: rgba(0, 0, 0, 0.6);
+    }
+  }
+}
+
 :root {
   --font-display:
     Spline Sans, Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
@@ -9,4 +67,19 @@
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
   --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
   --font-serif: Georgia, 'Times New Roman', serif;
+}
+
+/* Instagram's 4:5 portrait crop, the most common shape for a saved post. */
+@utility aspect-post {
+  aspect-ratio: 4 / 5;
+}
+
+/* Saved card cover. */
+@utility aspect-card {
+  aspect-ratio: 16 / 10;
+}
+
+/* Reels are 9:16. */
+@utility aspect-reel {
+  aspect-ratio: 9 / 16;
 }
